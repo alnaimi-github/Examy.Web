@@ -1,0 +1,48 @@
+﻿@page "/admin/home"
+@inject IAppState AppState
+@inject IAdminApi AdminApi
+<SectionContent SectionName="pageTitle">
+	Admin Home
+</SectionContent>
+
+@if (_data != null)
+{
+	<div class="row">
+		<div class="col-sm-4">
+			<div class="box bg-white p-3 h-100">
+				<h4 class="fw-bold">Categories</h4>
+				<hr />
+				<h3>@_data.TotalCategories</h3>
+			</div>
+		</div>
+
+		<div class="col-sm-4">
+			<div class="box bg-white p-3">
+				<h4 class="fw-bold">Students</h4>
+				<hr />
+				<h3>@_data.TotalStudents</h3>
+				<h3>@_data.ApprovedStudents Approved</h3>
+			</div>
+		</div>
+		<div class="col-sm-4">
+			<div class="box bg-white p-3">
+				<h4 class="fw-bold">Quizes</h4>
+				<hr />
+				<h3>@_data.TotalQuizes Total</h3>
+				<h3>@_data.ActiveQuizes Active</h3>
+			</div>
+		</div>
+	</div>
+
+}
+
+@code {
+	private AdminHomeDateDto? _data ;
+	protected override async Task OnInitializedAsync()
+	{
+		AppState.ShowLoader("Fetching data...");
+		_data = await AdminApi.GetHomeDataAsync();
+		AppState.HideLoader();
+	}
+
+}

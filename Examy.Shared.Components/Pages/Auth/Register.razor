@@ -1,0 +1,124 @@
+﻿@page "/auth/register"
+@layout EmptyLayout
+@inject IAuthApi AuthApi
+
+
+@inject IAppState AppState
+@inject QuizAuthStateProvider QuizAuthStateProvider
+
+@inject NavigationManager NavigationManager
+
+<div class="container">
+    <div class="row vh-100">
+        <div class="col-11 col-sm-4 mx-auto my-auto border bg-white shadow-lg">
+            <div class="mt-3">
+                <h1 class="h3">
+                    Register | Blazing Quiz
+                </h1>
+            </div>
+            <hr />
+            <EditForm Model="_model" OnValidSubmit="RegisterAsync">
+                <DataAnnotationsValidator/>
+                <div class="mb-3">
+                    <label for="username" class="form-label">Name</label>
+                    <InputText id="username" class="form-control" @bind-Value="_model.Name"/>
+                    <ValidationMessage For="() => _model.Name"/>
+                </div>
+                <div class="mb-3">
+                    <label for="email" class="form-label">Email</label>
+                    <InputText id="email" class="form-control" @bind-Value="_model.Email" />
+                    <ValidationMessage For="() => _model.Email" />
+                </div>
+                <div class="mb-3">
+                    <label for="phone" class="form-label">Phone</label>
+                    <InputText id="phone" class="form-control" @bind-Value="_model.Phone" />
+                    <ValidationMessage For="() => _model.Phone" />
+                </div>
+                <div class="mb-3">
+                    <label for="password" class="form-label">Password</label>
+                    <InputText type="password" id="password" class="form-control" @bind-Value="_model.Password"/>
+                    <ValidationMessage For="() => _model.Password"/>
+                </div>
+                @if (_error != null)
+                {
+                    <div class="mb-3 bg-danger text-white p-2">
+                        <p>
+                            @_error
+                        </p>
+                    </div>
+                }
+                <div class="mb-3 d-flex justify-content-between">
+                    @if (!_isBusy)
+                    {
+                        <a href="auth/login" class="btn btn-outline-primary"> Login  </a>
+                        <button type="submit" class="btn btn-success">Register</button>
+                    }
+                    else
+                    {
+                        <button type="button" disabled class="btn btn-secondary">
+                            Register-in...
+                        </button>
+                    }
+                </div>
+            </EditForm>
+        </div>
+    </div>
+</div>
+@if (_showSuccessAlert)
+{
+    <Modal Title="Success" OnActionButtonClick="OnModalClose" OnCancelClick="OnModalClose">
+        <p class="text-success">
+			Your account has been created successfully.<br/>
+			You will be able to login once Admin approves your account.
+        </p>
+    </Modal>
+}
+@code {
+    private RegisterDto _model = new();
+    private bool _isBusy;
+    private string? _error;
+	private bool _showSuccessAlert;
+
+	protected override void OnInitialized()
+	{
+		if (QuizAuthStateProvider.IsLoggedIn)
+		{
+			 NavigationManager.NavigateTo("/", replace:true);
+            
+		}
+	}
+
+    private async Task RegisterAsync()
+    {
+        _error = null;
+        _isBusy = true;
+
+        try
+        {
+            var apiResponse = await AuthApi.RegisterAsync(_model);
+            if (apiResponse.IsSuccess)
+            {
+                _error = apiResponse.ErrorMessage;
+                return;
+            }
+            
+			_showSuccessAlert = true;
+            
+		}
+		catch (Exception ex)
+		{
+			_error = ex.Message;
+		}
+		finally
+		{
+			_isBusy = false;
+		}
+	}
+	private void OnModalClose()
+	{
+        _model = new();
+        NavigationManager.NavigateTo("auth/login");
+	}
+}
+    
+

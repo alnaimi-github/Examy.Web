@@ -1,0 +1,171 @@
+﻿@page "/student/home"
+
+@inject IAppState AppState
+@inject ICategoryApi CategoryApi
+@inject IStudentQuizApi StudentQuizApi
+@inject NavigationManager NavigationManager
+@inject QuizState QuizState
+
+<SectionContent SectionName="pageTitle">
+    Home
+</SectionContent>
+
+<div class="container">
+    <div class="row">
+        <div class="col-sm-3 ms-auto">
+            <div class="mb-3">
+                <label class="form-label">Select Category</label>
+                <select @bind="_selectedCategoryId" class="form-control" @bind:after="OnSelectedCategoryChanged">
+                    <option value="0">Select Category</option>
+                    @foreach (var category in _categories)
+                    {
+                        <option value="@category.Id">@category.Name</option>
+                    }
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        @if (_isLoading && _quizes.Length == 0)
+        {
+            var message = _selectedCategoryId == 0 ?
+            "There are no active quizzes right now" :
+            "There are no active quizzes in the selected category";
+
+            <p class="text-danger text-center h5">@message</p>
+        }
+        else
+        {
+            @foreach (var q in _quizes)
+            {
+                <div class="col-sm-4">
+                    <div class="box bg-white p-3">
+                        <h5 class="fw-bold">@q.Name</h5>
+                        <hr />
+                        <table class="table">
+                            <tr>
+                                <td>
+                                    <label class="fw-bold">
+                                        Category
+                                    </label>
+                                </td>
+                                <td>
+                                    <span>
+                                        @q.CategoryName
+                                    </span>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>
+                                    <label class="fw-bold">
+                                        No of Questions
+                                    </label>
+                                </td>
+                                <td>
+                                    <span>
+                                        @q.TotalQuestions question(s)
+                                    </span>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>
+                                    <label class="fw-bold">
+                                        Total Time
+                                    </label>
+                                </td>
+                                <td>
+                                    <span>
+                                        @q.TimeInMinutes minute(s)
+                                    </span>
+                                </td>
+                            </tr>
+                        </table>
+                        <hr />
+                        <button type="button" class="btn btn-sm btn-warning" @onclick="() => _startingQuiz = q">Start Quiz</button>
+                    </div>
+                </div>
+            }
+        }
+    </div>
+</div>
+
+@if (_startingQuiz != null)
+{
+    var title = $"Start {_startingQuiz.Name}";
+    <Modal Title="@title" OnCancelClick="() => _startingQuiz = null"
+           OnActionButtonClick="StartQuizAsync">
+        <p class="m-0 p-3">
+            Do you want to start this quiz?<br /> You will not be able to pause the quiz.
+        </p>
+    </Modal>
+}
+
+@code {
+    private CategoryDto[] _categories = [];
+    private QuizListDto[] _quizes = [];
+    private int _selectedCategoryId = 0; // Default category ID
+    private bool _isLoading;
+    private QuizListDto? _startingQuiz;
+
+    protected override async Task OnInitializedAsync()
+    {
+        AppState.ShowLoader("Fetching categories and quizzes");
+        try
+        {
+            _isLoading = true;
+            var categoriesTask = CategoryApi.GetAllCategoriesAsync();
+            _categories = await categoriesTask;
+
+            // Set the default category ID to the first category if available
+            if (_categories.Length > 0)
+            {
+                _selectedCategoryId = _categories[0].Id;
+                _quizes = await StudentQuizApi.GetActiveQuizesAsync(_selectedCategoryId);
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error: {ex.Message}");
+        }
+        finally
+        {
+            AppState.HideLoader();
+            _isLoading = false;
+        }
+    }
+
+    private async Task OnSelectedCategoryChanged()
+    {
+        AppState.ShowLoader("Fetching quizzes");
+        _quizes = await StudentQuizApi.GetActiveQuizesAsync(_selectedCategoryId);
+        AppState.HideLoader();
+    }
+
+    private async Task StartQuizAsync()
+    {
+        // Redirect to the quiz page
+        AppState.ShowLoader("Preparing the quiz");
+        try
+        {
+            QuizApiResponse<int> response = await StudentQuizApi.StartQuizAsync(_startingQuiz.Id);
+            if (!response.IsSuccess)
+            {
+                // Show error alert
+                Console.WriteLine("Error starting quiz: " + response.ErrorMessage);
+                return;
+            }
+            int studentQuizId = response.Data;
+            QuizState.StartQuiz(_startingQuiz, studentQuizId);
+            NavigationManager.NavigateTo("/student/quiz");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error: {ex.Message}");
+        }
+        finally
+        {
+            AppState.HideLoader();
+        }
+    }
+}

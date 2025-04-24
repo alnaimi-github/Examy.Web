@@ -1,0 +1,38 @@
+﻿@inherits LayoutComponentBase
+
+<div class="page">
+    <div class="sidebar">
+        <NavMenu />
+    </div>
+
+    <main>
+        <article class="content px-4">
+            @if (AuthStateProvider.IsInitializing)
+            {
+                <p>Initializing...</p>
+            }
+            else
+            {
+                <div>
+                    <h1 class="m-0 h3 fw-bold">
+                        <SectionOutlet SectionName="pageTitle"/>
+                    </h1>
+                  
+                </div>
+                <hr />
+
+               
+                @Body
+            }
+        </article>
+    </main>
+</div>
+
+@inject QuizAuthStateProvider AuthStateProvider
+
+@code {
+    protected override async Task OnInitializedAsync()
+    {
+        await AuthStateProvider.InitializeAsync();
+    }
+}

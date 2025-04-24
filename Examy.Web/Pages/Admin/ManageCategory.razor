@@ -1,0 +1,136 @@
+﻿@page "/admin/manage-categories"
+@inject IAppState AppState
+@inject ICategoryApi CategoryApi
+
+<SectionContent SectionName="pageTitle">
+    Manage Categories
+</SectionContent>
+<div class="container">
+    <div class="row">
+        <div class="col-sm-4">
+            <EditForm Model="_category" OnValidSubmit="CreatedCategoryAsync">
+                <DataAnnotationsValidator />
+                <div class="bg-white p-3">
+                    <div class="">
+                        <h5 class="m-0 fw-bold">Add/Edit Category</h5>
+                        <hr />
+                    </div>
+                    <div class="">
+                        <div class="mb-3">
+                            <label for="categoryName" class="form-label">Category Name</label>
+                            <InputText id="categoryName" class="form-control" @bind-Value="_category.Name" />
+                            <ValidationMessage For="@(() => _category.Name)" />
+                        </div>
+                        @if (_errorMessage != null)
+                        {
+                            <div class="mb-3 border border-danger border-1 d-flex justify-content-between gap-2 align-items-start">
+                                <p class="m-0"> @_errorMessage</p>
+                                <button type="button" class="btn btn-sm btn-danger" @onclick="()=> _errorMessage = null">
+                                    Close
+                                </button>
+                            </div>
+                        }
+                    </div>
+
+                    <div class="d-flex justify-content-between align-items-center">
+                        @if (!_isBusy)
+                        {
+                            <button type="submit" class="btn btn-sm btn-success">Save Category</button>
+                            <button type="button" class="btn btn-sm btn-danger" @onclick="()=>_category = new()">Cancel</button>
+                        }
+                        else
+                        {
+                            <button type="button" class="btn btn-sm btn-secondary">Saving Category...</button>
+                            <button type="button" disabled class="btn btn-sm btn-secondary">Cancel</button>
+                        }
+                    </div>
+                </div>
+            </EditForm>
+        </div>
+        <div class="col-md-6 ms-auto">
+            <h3>Categories</h3>
+            <table class="table table-striped table-hover">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Id</th>
+                        <th>Category Name</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (_categories.Length == 0)
+                    {
+                        <tr>
+                            <td colspan="4">
+                                <p class="text-danger h5">No categories found.</p>
+                            </td>
+                        </tr>
+                    }
+                    else
+                    {
+                        int number = 1;
+                        @foreach (var category in _categories)
+                        {
+                            <tr>
+                                <td>@(number++)</td>
+                                <td>@category.Id</td>
+                                <td>@category.Name</td>
+                                <td>
+                                    <button class="btn btn-primary btn-sm" @onclick="() => EditCategory(category)">Edit</button>
+                                </td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+@code {
+    private CategoryDto[] _categories = [];
+    private CategoryDto _category = new();
+    private bool _isBusy;
+    private string? _errorMessage;
+    protected override async Task OnInitializedAsync() => await LoadCategoriesAsync();
+
+    private async Task LoadCategoriesAsync()
+    {
+        AppState.ShowLoader("Fetching categories");
+        await Task.Delay(1000);
+        _categories = await CategoryApi.GetAllCategoriesAsync();
+        AppState.HideLoader();
+    }
+
+    private void EditCategory(CategoryDto category)
+    {
+        _category = category;
+    }
+
+    private async Task CreatedCategoryAsync()
+    {
+        try
+        {
+            AppState.ShowLoader("Saving category");
+            _isBusy = true;
+            var response = await CategoryApi.CreatedCategoryAsync(_category);
+            if (!response.IsSuccess)
+            {
+                _errorMessage = response.ErrorMessage ?? "Unknown error in saving category";
+                return;
+            }
+            _category = new();
+            await LoadCategoriesAsync();
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = ex.Message;
+        }
+        finally
+        {
+            AppState.HideLoader();
+            _isBusy = false;
+        }
+    }
+}

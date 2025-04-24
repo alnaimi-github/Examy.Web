@@ -1,0 +1,96 @@
+﻿@inject QuizAuthStateProvider AuthStateProvider
+@inject NavigationManager NavigationManager
+@using Examy.Shared
+
+@if (!AuthStateProvider.IsInitializing)
+{
+    <div class="top-row ps-3 navbar navbar-dark">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="">Examy.Web</a>
+            <button title="Navigation menu" class="navbar-toggler" @onclick="ToggleNavMenu">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+        </div>
+    </div>
+
+    <div class="@NavMenuCssClass nav-scrollable" @onclick="ToggleNavMenu">
+        <nav class="flex-column">
+
+            <AuthorizeView>
+                <Authorized Context="authContext">
+                    <AuthorizeView Roles="@(nameof(UserRole.Admin))">
+                        <Authorized Context="adminContext">
+                            <div class="nav-item px-3">
+                                <NavLink class="nav-link" href="admin/home" Match="NavLinkMatch.All">
+                                    <span class="bi bi-house-door-fill-nav-menu" aria-hidden="true"></span> Home
+                                </NavLink>
+                            </div>
+                            <div class="nav-item px-3">
+                                <NavLink class="nav-link" href="admin/manage-categories">
+                                    <span class="bi bi-plus-square-fill-nav-menu" aria-hidden="true"></span> Manage Categories
+                                </NavLink>
+                            </div>
+                            <div class="nav-item px-3">
+                                <NavLink class="nav-link" href="admin/manage-students">
+                                    <span class="bi bi-plus-square-fill-nav-menu" aria-hidden="true"></span> Manage Students
+                                </NavLink>
+                            </div>
+                            <div class="nav-item px-3">
+                                <NavLink class="nav-link" href="admin/manage-quizes">
+                                    <span class="bi bi-plus-square-fill-nav-menu" aria-hidden="true"></span> Manage Quizes
+                                </NavLink>
+                            </div>
+                            <div class="nav-item px-3">
+                                <NavLink class="nav-link" href="admin/add-quiz">
+                                    <span class="bi bi-plus-square-fill-nav-menu" aria-hidden="true"></span> Add Quiz
+                                </NavLink>
+                            </div>
+                        </Authorized>
+                    </AuthorizeView>
+                    <AuthorizeView Roles="@(nameof(UserRole.Student))">
+                        <Authorized Context="studentContext">
+                            <div class="nav-item px-3">
+                                <NavLink class="nav-link" href="student/home" Match="NavLinkMatch.All">
+                                     <span class="bi bi-house-door-fill-nav-menu" aria-hidden="true"></span> Home
+                                </NavLink>
+                            </div>
+                            <div class="nav-item px-3">
+                                <NavLink class="nav-link" href="student/my-quizes">
+                                    <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> My Quizes
+                                </NavLink>
+                            </div>
+                        </Authorized>
+                    </AuthorizeView>
+                    
+                    <div class="nav-item px-3">
+                        <a role="button" class="nav-link" @onclick="Logout">
+                            Logout
+                        </a>
+                    </div>
+                </Authorized>
+            </AuthorizeView>
+           
+        </nav>
+    </div>
+}
+else
+{
+    <p>Loading...</p>
+}
+
+@code {
+    private bool collapseNavMenu = true;
+
+    private string? NavMenuCssClass => collapseNavMenu ? "collapse" : null;
+
+    private void ToggleNavMenu()
+    {
+        collapseNavMenu = !collapseNavMenu;
+    }
+
+    private async Task Logout()
+    {
+        await AuthStateProvider.SetLogoutAsync();
+        NavigationManager.NavigateTo("auth/login", replace: true);
+    }
+}

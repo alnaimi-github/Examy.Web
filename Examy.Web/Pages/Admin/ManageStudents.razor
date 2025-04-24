@@ -1,0 +1,89 @@
+﻿@page "/admin/manage-students"
+
+@inject IAdminApi UserApi
+@inject IAppState AppState
+
+<SectionContent SectionName="pageTitle">
+    Manage Students
+</SectionContent>
+
+<div class="row">
+    <div class="col-sm-4 ms-auto">
+        Filter by Approval Status
+    </div>
+    <div class="col-sm-4">
+        <select class="form-select" @bind="_filter" @bind:after="OnFilterChangeAsync">
+            @foreach (var f in Enum.GetValues<UserApprovedFilter>())
+            {
+                <option value="@f">@f</option>
+            }
+        </select>
+    </div>
+</div>
+<div class="row">
+    <QuickGrid ItemsProvider="_usersProvider" Pagination="_paginationState" @ref="_grid">
+        <PropertyColumn Property="u => u.Id" Title="ID" />
+        <PropertyColumn Property="u => u.Name" Title="Name" />
+        <PropertyColumn Property="u => u.Email" Title="Email" />
+        <PropertyColumn Property="u => u.Phone" Title="Phone" />
+        <TemplateColumn Title="Is Approved?">
+            <div class="form-check form-switch">
+                <input class="form-check-input" type="checkbox" role="switch"
+                       id="@context.Id"
+                       @onchange="async () => await OnUserApprovedToggleAsync(context)"
+                       checked="@context.IsApproved" />
+
+                <label class="form-check-label" for="@context.Id">
+                    @(context.IsApproved ? "Yes" : "No")
+                </label>
+            </div>
+        </TemplateColumn>
+
+    </QuickGrid>
+    <Paginator State="_paginationState" />
+</div>
+
+@code {
+    private const int DefaultPageSize = 10;
+
+    private QuickGrid<UserDto> _grid;
+
+    private GridItemsProvider<UserDto> _usersProvider;
+
+    private UserApprovedFilter _filter = UserApprovedFilter.All;
+
+    private PaginationState _paginationState = new PaginationState
+        {
+            ItemsPerPage = DefaultPageSize
+        };
+
+    protected override void OnInitialized()
+    {
+        _usersProvider = async request =>
+        {
+            AppState.ShowLoader("Fetching students");
+            var pageResult = await UserApi.GetUsersAsync(_filter, request.StartIndex, request.Count ?? DefaultPageSize);
+            AppState.HideLoader();
+            return GridItemsProviderResult.From(pageResult.Records, pageResult.TotalCount);
+        };
+    }
+
+    private async Task OnUserApprovedToggleAsync(UserDto user)
+    {
+        await InvokeAsync(async () =>
+        {
+            user.IsApproved = !user.IsApproved;
+            AppState.ShowLoader("Updating student approval status");
+            await UserApi.ToggleUserApprovedStatus(user.Id);
+            AppState.HideLoader();
+        });
+    }
+
+    private async Task OnFilterChangeAsync()
+    {
+        if (_grid != null)
+        {
+            await _grid.RefreshDataAsync();
+        }
+    }
+}

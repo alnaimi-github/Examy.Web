@@ -1,0 +1,131 @@
+﻿@page "/admin/manage-quizes"
+@inject IQuizApi QuizApi
+@inject ICategoryApi CategoryApi
+@inject IAppState AppState
+<SectionContent SectionName="pageTitle">
+    Manage Quizes
+</SectionContent>
+<div class="container">
+
+    <div class="row">
+        <div class="col-sm-3 ms-auto">
+            <div class="mb-3">
+                <label class="form-label">Select Category</label> 
+                <select @bind="_selectedCategory" class="form-control" @bind:after="OnSelectedCategoryChanged">
+                    <option value="0">Select Category</option>
+                    @foreach (var category in _categories)
+                    {
+                        <option value="@category.Id">@category.Name</option>
+                    }
+                </select>
+            </div>
+        </div>
+    </div>
+    <div class="row">
+        <table class="table table-striped table-hover">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Category</th>
+                    <th>Number of Questions</th>
+                    <th>Time in Minutes</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (_fileterQuizes.Length == 0)
+                {
+                    <tr>
+                        <td colspan="5">
+                            <p class="text-danger text-center h5">
+                                No quizes found
+                            </p>
+                        </td>
+                    </tr>
+                }
+                else
+                {
+                    @foreach (var q in _fileterQuizes)
+                    {
+                        <tr>
+                            <td>@q.Name</td>
+                            <td>@q.CategoryName</td>
+                            <td>@q.TotalQuestions questions</td>
+                            <td>@q.TimeInMinutes minutes</td>
+                            <td>
+                                <div class="d-flex justify-content-around">
+                                    <button type="button" class="btn btn-sm btn-info" @onclick="()=> ViewQuestionAsync(q)">View Questions</button>
+                                    <a href="admin/edit-quiz/@q.Id" class="btn btn-sm btn-primary">Edit</a>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+@if (_showQuestionsModal)
+{
+    <Examy.Shared.Components.Components.Modal Title="Questions" ActionButtonText="Ok" Size="ModalSize.Large"
+    OnActionButtonClick="()=> _showQuestionsModal = false"
+    OnCancelClick="()=> _showQuestionsModal = false">
+        @foreach(var q in _viewingQuestion)
+        {
+            <div class="mb-3 shadow p-2">
+                @q.Text
+            </div>
+        }
+    </Examy.Shared.Components.Components.Modal>
+}
+
+@code {
+    private QuizListDto[] _quizzes = [];
+    private QuizListDto[] _fileterQuizes = [];
+    private CategoryDto[] _categories = [];
+    private int _selectedCategory;
+
+    private QuestionDto[] _viewingQuestion = [];
+    private bool _showQuestionsModal;
+    protected override async Task OnInitializedAsync()
+    {
+        AppState.ShowLoader("Fetching quizes and categories");
+        try
+        {
+            var quizesTask = QuizApi.GetQuizesAsync();
+            _categories = await CategoryApi.GetAllCategoriesAsync();
+            _quizzes = await quizesTask;
+            _fileterQuizes = _quizzes;
+        }
+        catch (Exception)
+        {
+            throw;
+        }
+        finally
+        {
+            AppState.HideLoader();
+        }
+    }
+
+    private void OnSelectedCategoryChanged()
+    {
+        if (_selectedCategory == 0)
+        {
+            _fileterQuizes = _quizzes;
+        }
+        else
+        {
+            _fileterQuizes = _quizzes.Where(x => x.CategoryId == _selectedCategory).ToArray();
+        }
+    }
+
+    private async Task ViewQuestionAsync(QuizListDto q)
+    {
+		AppState.ShowLoader("Fetching questions"); 
+        // Fetch questions for the Api
+		_viewingQuestion = await QuizApi.GetQuizQuestionsAsync(q.Id);
+		AppState.HideLoader();
+        _showQuestionsModal = true;
+    }
+}

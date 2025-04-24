@@ -1,0 +1,255 @@
+﻿@page "/student/quiz"
+@inject NavigationManager NavigationManager
+@inject QuizState QuizState
+@inject IStudentQuizApi StudentQuizApi
+@inject IAppState AppState
+@layout QuizPageLayout
+
+<SectionContent SectionName="pageTitle">
+    Quiz - @QuizState.Quiz?.Name
+    [<small>
+        @QuizState.Quiz?.TotalQuestions questions(s)
+    </small>]
+</SectionContent>
+
+
+@if(QuizState.Quiz != null)
+{
+<div class="row mb-3">
+		
+    <div class="col-sm-12">
+        <div class=" my-1 d-flex justify-content-between align-content-center">
+                <h6>
+                    @_questions.Count of @QuizState.Quiz?.TotalQuestions
+                </h6>
+              <div>
+                    <QuizTimer TotalMinutes="QuizState.Quiz.CategoryId"
+                               OnTimerShop="AutoSubmitQuizAsync" />
+                </div>
+        </div>
+        <h4 class="mt-3 mb-0 fw-bold">
+            @_question?.Text
+        </h4>
+        <hr />
+
+        @foreach (var o in _question.Options)
+        {
+            <div class="d-flex gap-2 p-3 mb-3 bg-white option-box" @onclick="()=> _selecteOptionId = o.Id">
+                <input type="radio" class="" name="rdo_@_question.Id" id="rdo_@o.Id"
+                       checked="@(_selecteOptionId == o.Id)"
+                       @onchange="()=>_selecteOptionId = o.Id" />
+                <label for="rdo_@o.Id" class="d-block">@o.Text</label>
+            </div>
+        }
+        @if (_errorMessage != null)
+        {
+            <div class="bg-danger my-3 p-2 d-flex justify-content-between align-content-center">
+                <div class="text-white">@_errorMessage</div>
+                <button type="button" class="btn-close btn-close-white" @onclick="()=> _errorMessage = null">X</button>
+            </div>
+        }
+        <hr />
+
+        <div class="d-flex justify-content-between align-items-center">
+            <button type="button" class="btn btn-danger" @onclick="() => _showExitQuizConfirmation = true">Exit Test</button>
+            @if (!IsLastQuestion)
+            {
+                <button type="button" class="btn btn-primary" @onclick="SaveAndNextQuestionAsync">Save & Next</button>
+            }
+            <button type="button" class="btn btn-success" @onclick="SubmitQuizAsync">Submit Quiz</button>
+        </div>
+    </div>
+</div>
+}
+@if (_submitQuizMessage != null)
+{
+    <Modal Title="Quiz Submission"
+           OnActionButtonClick="RedirectToMyQuizes" OnCancelClick="RedirectToMyQuizes">
+        <p class="text-success">
+            @_submitQuizMessage
+        </p>
+    </Modal>
+}
+
+@if (_showExitQuizConfirmation)
+{
+    <Modal Title="Exit Quiz?" ActionButtonText="Yes" OnActionButtonClick="ExitQuizAsync"
+           OnCancelClick="()=> _showExitQuizConfirmation = false">
+        <h5 class="text-danger">
+            Do you really want to exit the quiz?
+        </h5>
+    </Modal>
+}
+
+@code {
+    private QuestionDto? _question = new();
+    private int _selecteOptionId;
+    private string? _errorMessage;
+    private string? _submitQuizMessage;
+    private bool _showExitQuizConfirmation;
+    private List<QuestionDto> _questions = [];
+    private bool IsLastQuestion => _questions.Count == QuizState.Quiz.TotalQuestions;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (QuizState.Quiz == null || QuizState.StudentQuizId == 0)
+        {
+            NavigationManager.NavigateTo("student/home", replace: true);
+            return;
+        }
+        await LoadNextQuestionAsync();
+    }
+
+    private async Task ExitQuizAsync()
+    {
+        try
+        {
+            AppState.ShowLoader("Exiting the quiz");
+            QuizApiResponse result = await StudentQuizApi.ExitQuizAsync(QuizState.StudentQuizId);
+
+            if (!result.IsSuccess)
+            {
+                _errorMessage = result.ErrorMessage;
+                return;
+            }
+            RedirectToMyQuizes();
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = ex.Message;
+        }
+        finally
+        {
+            AppState.HideLoader();
+        }
+    }
+
+    private async Task SaveAndNextQuestionAsync()
+    {
+        Console.WriteLine("SaveAndNextQuestionAsync called");
+        var isResponseSaved = await SaveQuestionResponseAsync();
+        if (isResponseSaved)
+        {
+            await LoadNextQuestionAsync();
+        }
+    }
+
+    private async Task SubmitQuizAsync()
+    {
+        var isResponseSaved = await SaveQuestionResponseAsync();
+        if (isResponseSaved)
+        {
+            AppState.ShowLoader("Submitting the quiz");
+            try
+            {
+                QuizApiResponse result = await StudentQuizApi.SubmitQuizAsync(QuizState.StudentQuizId);
+                if (!result.IsSuccess)
+                {
+                    _errorMessage = result.ErrorMessage;
+                    return;
+                }
+                //Todo Show the result in Modal Popup or in a separate page
+                _submitQuizMessage = "Quiz submitted successfully";
+            }
+            catch (Exception ex)
+            {
+                _errorMessage = ex.Message;
+            }
+            finally
+            {
+                AppState.HideLoader();
+            }
+        }
+    }
+
+    private async Task LoadNextQuestionAsync()
+    {
+        AppState.ShowLoader("Fetching question");
+        try
+        {
+            QuizApiResponse<QuestionDto?> result = await StudentQuizApi.GetNextQuestionForQuizAsync(QuizState.StudentQuizId);
+            if (!result.IsSuccess || result.Data == null)
+            {
+                _errorMessage = result.ErrorMessage;
+                return;
+            }
+            _question = result.Data;
+            _questions.Add(_question);
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = ex.Message;
+        }
+        finally
+        {
+            AppState.HideLoader();
+        }
+    }
+
+    private async Task<bool> SaveQuestionResponseAsync()
+    {
+        _errorMessage = null;
+        if (_selecteOptionId == 0)
+        {
+            _errorMessage = "Please select an option";
+            return false;
+        }
+        AppState.ShowLoader("Saving your response");
+        try
+        {
+            StudentQuizQuestionResponseDto dto = new(QuizState.StudentQuizId, _question.Id, _selecteOptionId);
+            Console.WriteLine($"Saving response for question {_question.Id} with option {_selecteOptionId}");
+            QuizApiResponse result = await StudentQuizApi.SaveQuestionResponseAsync(QuizState.StudentQuizId, dto);
+            if (!result.IsSuccess)
+            {
+                _errorMessage = result.ErrorMessage;
+                return false;
+            }
+            _selecteOptionId = 0;
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = ex.Message;
+            return false;
+        }
+        finally
+        {
+            AppState.HideLoader();
+        }
+    }
+
+    private void RedirectToMyQuizes()
+    {
+        QuizState.StopQuiz();
+        NavigationManager.NavigateTo("student/quizes", replace: true);
+    }
+
+	private async Task AutoSubmitQuizAsync()
+	{
+		
+        try
+        {
+            AppState.ShowLoader("Submitting the quiz");
+            QuizApiResponse result = await StudentQuizApi.AutoSubmitQuizAsync(QuizState.StudentQuizId);
+
+            if (!result.IsSuccess)
+            {
+                _errorMessage = result.ErrorMessage;
+                return;
+            }
+
+			_submitQuizMessage = "Quiz submitted successfully";
+            // RedirectToMyQuizes();
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = ex.Message;
+        }
+        finally
+        {
+            AppState.HideLoader();
+        }
+	}
+}
+

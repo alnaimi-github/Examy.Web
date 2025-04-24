@@ -1,0 +1,73 @@
+﻿
+@* <label>01:59/15:00</label>  *@
+<label class="fw-bold" >
+	<span class="@_textColorClass" >
+		@_currentDisplayTime
+	</span>
+	/@_totalDisplayTime
+	</label>
+
+
+@code{
+	[Parameter,EditorRequired]
+	public int TotalMinutes { get; set; }
+
+	private DateTime _totalTime;
+
+	[Parameter]
+	public EventCallback OnTimerShop { get; set; }
+
+	private string _totalDisplayTime = "";
+
+	private string _currentDisplayTime = "00:00";
+
+	private string _textColorClass = "";
+
+	private PeriodicTimer _periodicTimer;
+
+	protected override void OnInitialized()
+	{
+		_totalDisplayTime = $"{TotalMinutes.ToString().PadLeft(2, '0')}:00";
+		_totalTime = DateTime.Now.AddMinutes(TotalMinutes);
+		_periodicTimer = new PeriodicTimer(TimeSpan.FromSeconds(1));
+		HandleTimerAsync();
+
+	}
+
+	private async Task HandleTimerAsync()
+	{
+		while (await _periodicTimer.WaitForNextTickAsync())
+		{
+			try
+			{
+				var diff = _totalTime - DateTime.Now;
+				if (diff <= TimeSpan.Zero)
+				{
+					_periodicTimer.Dispose();
+					_periodicTimer = null;
+					await OnTimerShop.InvokeAsync();
+					return;
+				}
+				if (diff.TotalSeconds <= 60)
+				{
+					_textColorClass = "text-danger";
+				}
+				_currentDisplayTime = diff.ToString("mm\\:ss");
+				await InvokeAsync(StateHasChanged);
+			}
+			catch (Exception ex)
+			{
+				throw ex;
+			}
+
+		}
+	}
+
+	public void Dispose()
+	{
+		if(_periodicTimer != null)
+		{
+			_periodicTimer.Dispose();
+		}
+	}
+}

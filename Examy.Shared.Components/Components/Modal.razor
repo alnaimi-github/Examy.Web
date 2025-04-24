@@ -1,0 +1,45 @@
+<div class="modal fade show" id="exampleModalLive" tabindex="-1" aria-labelledby="exampleModalLiveLabel" aria-modal="true" role="dialog" style="display: block;">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable @SizeClass">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="staticBackdropLabel">@Title</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                @ChildContent
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" @onclick="OnCancelClick">Close</button>
+                <button type="button" class="btn btn-primary" @onclick="OnActionButtonClick">@ActionButtonText</button>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="modal-backdrop fade show"></div>
+@code{
+	[Parameter, EditorRequired]
+	public string Title { get; set; }
+
+	[Parameter]
+	public ModalSize Size { get; set; } = ModalSize.Default;
+
+    [Parameter, EditorRequired]
+	public RenderFragment ChildContent { get; set; }
+    [Parameter]
+	public EventCallback OnActionButtonClick { get; set; }
+    [Parameter]
+	public EventCallback OnCancelClick { get; set; }
+
+    [Parameter]
+	public string ActionButtonText { get; set; } = "Ok";
+
+    private string SizeClass => Size switch
+	{
+		ModalSize.Small => "modal-sm",
+		ModalSize.Large => "modal-lg",
+		ModalSize.Default => "",
+		ModalSize.ExtraLarge => "modal-xl",
+		_ => ""
+	};
+
+}

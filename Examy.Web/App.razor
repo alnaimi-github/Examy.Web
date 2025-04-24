@@ -1,0 +1,21 @@
+﻿<CascadingAuthenticationState>
+    <Router AppAssembly="@typeof(App).Assembly" AdditionalAssemblies="new []{typeof(Examy.Shared.Components.Auth.QuizAuthStateProvider).Assembly}">
+        <Found Context="routeData">
+            <RouteView RouteData="@routeData" DefaultLayout="@typeof(MainLayout)" />
+            <FocusOnNavigate RouteData="@routeData" Selector="h1" />
+        </Found>
+        <NotFound>
+            <LayoutView Layout="@typeof(MainLayout)">
+                <p>Sorry, there's nothing at this address.</p>
+            </LayoutView>
+        </NotFound>
+    </Router>
+</CascadingAuthenticationState>
+<Loader/>
+@inject QuizAuthStateProvider QuizAuthStateProvider
+@code {
+    protected override async Task OnInitializedAsync()
+    {
+        await QuizAuthStateProvider.InitializeAsync();
+    }
+}

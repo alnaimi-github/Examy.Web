@@ -1,0 +1,24 @@
+﻿@page "/"
+@inject QuizAuthStateProvider QuizAuthStateProvider
+@using Microsoft.AspNetCore.Authorization
+@using Examy.Shared
+
+@attribute [Authorize]
+
+<SectionContent SectionName="pageTitile">
+    Home
+</SectionContent>
+<AuthorizeView>
+    <Authorized>
+		<AuthorizeView Roles="@nameof(UserRole.Student)" Context="studentContext">
+			<RedirectToHome Url="/student/home" />
+        </AuthorizeView>
+        <AuthorizeView Roles="@nameof(UserRole.Admin)" Context="adminContext">
+            <RedirectToHome Url="/admin/home" />
+        </AuthorizeView>
+    </Authorized>
+</AuthorizeView>
+
+@code {
+
+}
