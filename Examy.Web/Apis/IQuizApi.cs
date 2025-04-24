@@ -18,4 +18,8 @@ public interface IQuizApi
 
     [Get("/api/quizes/{quizId}")]
     Task<QuizSaveDto?> GetQuizToEditAsync(Guid quizId);
+
+    [Delete("/api/quizes/{quizId}/questions/{questionId}")]
+    Task<QuizApiResponse> DeleteQuestionAsync(Guid quizId, int questionId);
+
 }

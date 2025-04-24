@@ -163,4 +163,34 @@ public class QuizService
         }
     }
 
+    public async Task<QuizApiResponse> RemoveQuestionAsync(Guid quizId, int questionId)
+    {
+        try
+        {
+            var question = await _context.Questions
+                .Include(q => q.Options)
+                .Include(q => q.StudentQuizQuestion)
+                .FirstOrDefaultAsync(q => q.Id == questionId && q.QuizId == quizId);
+
+            if (question == null)
+            {
+                return QuizApiResponse.Fail("Question does not exist or does not belong to the specified quiz.");
+            }
+
+            _context.StudentQuestions.RemoveRange(question.StudentQuizQuestion);
+
+            _context.Options.RemoveRange(question.Options);
+
+            _context.Questions.Remove(question);
+
+            await _context.SaveChangesAsync();
+
+            return QuizApiResponse.Success;
+        }
+        catch (Exception ex)
+        {
+            return QuizApiResponse.Fail($"An error occurred while deleting the question: {ex.Message}");
+        }
+    }
+
 }

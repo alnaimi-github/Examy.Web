@@ -31,6 +31,11 @@ public static class QuizEndpoints
             return Results.Ok(await service.GetQuizQuestions(quizId));
         });
 
+        quizGroup.MapGet("{quizId:guid}/questions", async (Guid quizId, QuizService service) =>
+        {
+            return Results.Ok(await service.GetQuizQuestions(quizId));
+        });
+
         quizGroup.MapGet("{quizId:guid}", async (Guid quizId, QuizService service) =>
         {
             return Results.Ok(await service.GetQuizToEditAsync(quizId));
@@ -39,6 +44,11 @@ public static class QuizEndpoints
         quizGroup.MapDelete("{quizId:guid}", async (Guid quizId, QuizService service) =>
         {
             return Results.Ok(await service.RemoveQuizAsync(quizId));
+        });
+
+        quizGroup.MapDelete("{quizId:guid}/questions/{questionId}", async (Guid quizId, int questionId, QuizService service) =>
+        {
+            return Results.Ok(await service.RemoveQuestionAsync(quizId, questionId));
         });
 
         return app;
