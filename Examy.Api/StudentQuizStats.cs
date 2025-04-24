@@ -1,11 +1,10 @@
-﻿namespace Examy.Api
-{
-    public enum StudentQuizStats
-    {
-        Started,
-        Completed,
-        Expired,
-        AutoSubmitted
+﻿namespace Examy.Api;
 
-    }
+public enum StudentQuizStats
+{
+    Started,
+    Completed,
+    Expired,
+    AutoSubmitted
+
 }

@@ -10,8 +10,6 @@ using Microsoft.IdentityModel.Tokens;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
-// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
@@ -57,7 +55,7 @@ builder.Services.AddCors(options =>
         p.WithOrigins(allowedOrigins)
             .AllowAnyHeader()
             .AllowAnyMethod()
-            .AllowCredentials(); // Ensure credentials are allowed if needed
+            .AllowCredentials();
     });
 });
 
@@ -67,14 +65,6 @@ builder.Services.AddTransient<AuthService>()
     .AddTransient<AdminService>()
     .AddTransient<StudentQuizService>();
 
-//builder.Services.AddSingleton<Func<QuizContext>>(sp => () =>
-//{
-//    var scope = sp.CreateScope();
-//    return scope.ServiceProvider.GetRequiredService<QuizContext>();
-//}
-
-//);
-
 
 builder.Services.AddAuthorization();
 var app = builder.Build();
@@ -82,7 +72,7 @@ var app = builder.Build();
 #if DEBUG
 ApplyDbMigrations(app.Services);
 #endif
-// Configure the HTTP request pipeline.
+
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();

@@ -1,24 +1,23 @@
 ﻿using Examy.Shared;
 
-namespace Examy.Web
+namespace Examy.Web;
+
+public class AppState : IAppState
 {
-    public class AppState : IAppState
+    public string? LoadingText { get; private set; }
+
+    public event Action? OnToggleLoader;
+
+    public void HideLoader()
     {
-        public string? LoadingText { get; private set; }
+        LoadingText = null;
+        OnToggleLoader?.Invoke();
+    }
 
-        public event Action? OnToggleLoader;
+    public void ShowLoader(string loadingText)
+    {
 
-        public void HideLoader()
-        {
-            LoadingText = null;
-            OnToggleLoader?.Invoke();
-        }
-
-        public void ShowLoader(string loadingText)
-        {
-
-            LoadingText = loadingText;
-            OnToggleLoader?.Invoke();
-        }
+        LoadingText = loadingText;
+        OnToggleLoader?.Invoke();
     }
 }

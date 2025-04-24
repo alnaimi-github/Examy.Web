@@ -5,4 +5,3 @@ public sealed record StudentQuizResultDto(
     int CorrectAnswers,
     int IncorrectAnswers,
     double FinalScore);
-

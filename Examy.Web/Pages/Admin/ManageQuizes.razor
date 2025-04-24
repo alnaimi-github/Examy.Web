@@ -2,15 +2,16 @@
 @inject IQuizApi QuizApi
 @inject ICategoryApi CategoryApi
 @inject IAppState AppState
+
 <SectionContent SectionName="pageTitle">
     Manage Quizes
 </SectionContent>
-<div class="container">
 
+<div class="container">
     <div class="row">
         <div class="col-sm-3 ms-auto">
             <div class="mb-3">
-                <label class="form-label">Select Category</label> 
+                <label class="form-label">Select Category</label>
                 <select @bind="_selectedCategory" class="form-control" @bind:after="OnSelectedCategoryChanged">
                     <option value="0">Select Category</option>
                     @foreach (var category in _categories)
@@ -54,8 +55,9 @@
                             <td>@q.TimeInMinutes minutes</td>
                             <td>
                                 <div class="d-flex justify-content-around">
-                                    <button type="button" class="btn btn-sm btn-info" @onclick="()=> ViewQuestionAsync(q)">View Questions</button>
+                                    <button type="button" class="btn btn-sm btn-info" @onclick="() => ViewQuestionAsync(q)">View Questions</button>
                                     <a href="admin/edit-quiz/@q.Id" class="btn btn-sm btn-primary">Edit</a>
+                                    <button type="button" class="btn btn-sm btn-danger" @onclick="() => ConfirmDeleteQuiz(q)">Delete</button>
                                 </div>
                             </td>
                         </tr>
@@ -69,16 +71,25 @@
 @if (_showQuestionsModal)
 {
     <Examy.Shared.Components.Components.Modal Title="Questions" ActionButtonText="Ok" Size="ModalSize.Large"
-    OnActionButtonClick="()=> _showQuestionsModal = false"
-    OnCancelClick="()=> _showQuestionsModal = false">
-        @foreach(var q in _viewingQuestion)
+                                              OnActionButtonClick="() => _showQuestionsModal = false"
+                                              OnCancelClick="() => _showQuestionsModal = false">
+        @foreach (var q in _viewingQuestion)
         {
             <div class="mb-3 shadow p-2">
                 @q.Text
             </div>
         }
+        </Examy.Shared.Components.Components.Modal>
+}
+
+@if (_showDeleteConfirmation)
+{
+    <Examy.Shared.Components.Components.Modal Title="Delete Quiz" ActionButtonText="Yes, Delete" Size="ModalSize.Small"
+                                              OnActionButtonClick="DeleteQuizAsync" OnCancelClick="() => _showDeleteConfirmation = false">
+        <p>Are you sure you want to delete the quiz "<strong>@_quizToDelete?.Name</strong>"?</p>
     </Examy.Shared.Components.Components.Modal>
 }
+
 
 @code {
     private QuizListDto[] _quizzes = [];
@@ -88,9 +99,14 @@
 
     private QuestionDto[] _viewingQuestion = [];
     private bool _showQuestionsModal;
+
+    private bool _showDeleteConfirmation;
+    private QuizListDto? _quizToDelete;
+    private string? _errorMessage;
+
     protected override async Task OnInitializedAsync()
     {
-        AppState.ShowLoader("Fetching quizes and categories");
+        AppState.ShowLoader("Fetching quizzes and categories");
         try
         {
             var quizesTask = QuizApi.GetQuizesAsync();
@@ -98,9 +114,9 @@
             _quizzes = await quizesTask;
             _fileterQuizes = _quizzes;
         }
-        catch (Exception)
+        catch (Exception ex)
         {
-            throw;
+            _errorMessage = $"Error fetching data: {ex.Message}";
         }
         finally
         {
@@ -122,10 +138,60 @@
 
     private async Task ViewQuestionAsync(QuizListDto q)
     {
-		AppState.ShowLoader("Fetching questions"); 
-        // Fetch questions for the Api
-		_viewingQuestion = await QuizApi.GetQuizQuestionsAsync(q.Id);
-		AppState.HideLoader();
-        _showQuestionsModal = true;
+        AppState.ShowLoader("Fetching questions");
+        try
+        {
+            _viewingQuestion = await QuizApi.GetQuizQuestionsAsync(q.Id);
+            _showQuestionsModal = true;
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Error fetching questions: {ex.Message}";
+        }
+        finally
+        {
+            AppState.HideLoader();
+        }
+    }
+
+    private void ConfirmDeleteQuiz(QuizListDto quiz)
+    {
+        _quizToDelete = quiz;
+        _showDeleteConfirmation = true;
+    }
+
+    private async Task DeleteQuizAsync()
+    {
+        if (_quizToDelete == null)
+        {
+            return;
+        }
+
+        AppState.ShowLoader("Deleting quiz");
+        try
+        {
+            var result = await QuizApi.DeleteQuizAsync(_quizToDelete.Id);
+            if (result.IsSuccess)
+            {
+                // Remove the deleted quiz from the list
+                _quizzes = _quizzes.Where(q => q.Id != _quizToDelete.Id).ToArray();
+                _fileterQuizes = _fileterQuizes.Where(q => q.Id != _quizToDelete.Id).ToArray();
+                _showDeleteConfirmation = false;
+            }
+            else
+            {
+                _errorMessage = $"Error deleting quiz: {result.ErrorMessage}";
+            }
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Error deleting quiz: {ex.Message}";
+        }
+        finally
+        {
+            AppState.HideLoader();
+        }
     }
 }
+
+

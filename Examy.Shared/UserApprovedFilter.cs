@@ -1,9 +1,8 @@
-﻿namespace Examy.Shared
+﻿namespace Examy.Shared;
+
+public enum UserApprovedFilter
 {
-    public enum UserApprovedFilter
-    {
-        All,
-        ApprovedOnly,
-        UnApprovedOnly
-    }
+    All,
+    ApprovedOnly,
+    UnApprovedOnly
 }

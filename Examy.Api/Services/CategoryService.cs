@@ -3,56 +3,56 @@ using Examy.Api.Data.Entities;
 using Examy.Shared.DTO;
 using Microsoft.EntityFrameworkCore;
 
-namespace Examy.Api.Services
+namespace Examy.Api.Services;
+
+public class CategoryService
 {
-    public class CategoryService
+    private readonly QuizContext _context;
+    public CategoryService(QuizContext context)
     {
-        private readonly QuizContext _context;
-        public CategoryService(QuizContext context)
+        _context = context;
+    }
+
+    public async Task<QuizApiResponse> CreateCategoryAsync(CategoryDto dto)
+    {
+        if(await _context.Categories
+               .AsNoTracking().AnyAsync
+                   (c => c.Name == dto.Name && c.Id != dto.Id))
         {
-            _context = context;
+            return QuizApiResponse.Fail(
+                "Category with the same name already exists"
+            );
         }
 
-        public async Task<QuizApiResponse> CreateCategoryAsync(CategoryDto dto)
+        if (dto.Id == 0)
         {
-            if(await _context.Categories
-                .AsNoTracking().AnyAsync
-                (c => c.Name == dto.Name && c.Id != dto.Id))
-            {
-                return QuizApiResponse.Fail(
-                    "Category with the same name already exists"
-                    );
-            }
+            var category = new Category
 
-            if (dto.Id == 0)
             {
-                var category = new Category
-
-                {
-                    //id is auto generated
+                //id is auto generated
                         
-                    Name = dto.Name
-                };
-                _context.Categories.Add(category);
-            }
-            else
-            {
-                var dbCategory = await _context.Categories
-                    .FirstOrDefaultAsync(c => c.Id != dto.Id);
-                if (dbCategory == null) 
-                {
-                     
-                    return QuizApiResponse.Fail("Category does not exist");
-                }
-                dbCategory.Name = dto.Name;
-                _context.Categories.Update(dbCategory);
-
-            }
-            await _context.SaveChangesAsync();
-            return QuizApiResponse.Success;
+                Name = dto.Name
+            };
+            _context.Categories.Add(category);
         }
+        else
+        {
+            var dbCategory = await _context.Categories
+                .FirstOrDefaultAsync(c => c.Id != dto.Id);
+            if (dbCategory == null) 
+            {
+                     
+                return QuizApiResponse.Fail("Category does not exist");
+            }
+            dbCategory.Name = dto.Name;
+            _context.Categories.Update(dbCategory);
 
-        public async Task<CategoryDto[]> GetCategoriesAsync()
+        }
+        await _context.SaveChangesAsync();
+        return QuizApiResponse.Success;
+    }
+
+    public async Task<CategoryDto[]> GetCategoriesAsync()
         => await _context.Categories
             .AsNoTracking()
             .Select(c => new CategoryDto
@@ -62,43 +62,42 @@ namespace Examy.Api.Services
             })
             .ToArrayAsync();
 
-        public async Task<CategoryDto> GetCategoryByIdAsync(int id)
-            => await _context.Categories
-                .AsNoTracking()
-                .Where(c => c.Id == id)
-                .Select(c => new CategoryDto
-                {
-                    Id = c.Id,
-                    Name = c.Name
-                })
-                .FirstOrDefaultAsync();
-
-
-
-        public async Task<CategoryDto> UpdateCategoryAsync(int id, CategoryDto dto)
-        {
-            var category = await _context.Categories.FindAsync(id);
-            if (category == null)
+    public async Task<CategoryDto> GetCategoryByIdAsync(int id)
+        => await _context.Categories
+            .AsNoTracking()
+            .Where(c => c.Id == id)
+            .Select(c => new CategoryDto
             {
-                return null;
-            }
-            category.Name = dto.Name;
-            await _context.SaveChangesAsync();
-            return dto;
-        }
+                Id = c.Id,
+                Name = c.Name
+            })
+            .FirstOrDefaultAsync();
 
-        public async Task<bool> DeleteCategoryAsync(int id)
+
+
+    public async Task<CategoryDto> UpdateCategoryAsync(int id, CategoryDto dto)
+    {
+        var category = await _context.Categories.FindAsync(id);
+        if (category == null)
         {
-            var category = await _context.Categories.FindAsync(id);
-            if (category == null)
-            {
-                return false;
-            }
-            _context.Categories.Remove(category);
-            await _context.SaveChangesAsync();
-            return true;
+            return null;
         }
-
-
+        category.Name = dto.Name;
+        await _context.SaveChangesAsync();
+        return dto;
     }
+
+    public async Task<bool> DeleteCategoryAsync(int id)
+    {
+        var category = await _context.Categories.FindAsync(id);
+        if (category == null)
+        {
+            return false;
+        }
+        _context.Categories.Remove(category);
+        await _context.SaveChangesAsync();
+        return true;
+    }
+
+
 }

@@ -1,9 +1,8 @@
-﻿namespace Examy.Shared
-{
-   public enum UserRole
-    {
-        Admin,
-        Student
+﻿namespace Examy.Shared;
 
-    }
+public enum UserRole
+{
+    Admin,
+    Student
+
 }

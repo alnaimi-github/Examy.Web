@@ -1,12 +1,11 @@
 ﻿using System.ComponentModel.DataAnnotations;
 
-namespace Examy.Api.Data.Entities
+namespace Examy.Api.Data.Entities;
+
+public class Category
 {
-    public class Category
-    {
-        [Key]
-        public int Id { get; set; }
-        [MaxLength(50)]
-        public string Name { get; set; }
-    }
+    [Key]
+    public int Id { get; set; }
+    [MaxLength(50)]
+    public string Name { get; set; }
 }

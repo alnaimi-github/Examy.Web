@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using Refit;
+using AppState = Examy.Shared.AppState;
 
 
 var builder = WebAssemblyHostBuilder.CreateDefault(args);
@@ -18,7 +19,7 @@ builder.Services.AddScoped<AuthenticationStateProvider>(provider => provider.Get
 builder.Services.AddCascadingAuthenticationState();
 builder.Services.AddAuthorizationCore();
 
-builder.Services.AddSingleton<IAppState, Examy.Web.AppState>().AddSingleton<IStorageService, StorageService>();
+builder.Services.AddSingleton<IAppState, AppState>().AddSingleton<IStorageService, StorageService>();
 builder.Services.AddSingleton<QuizState>();
 
 ConfigureRefit(builder.Services);
