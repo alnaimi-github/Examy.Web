@@ -22,12 +22,12 @@ namespace Examy.Web.Apis
         Task<QuizApiResponse> SaveQuestionResponseAsync(int studentQuizId, StudentQuizQuestionResponseDto dto);
 
         [Post("/api/student/quiz/{studentQuizId}/submit")]
-        Task<QuizApiResponse<List<QuestionDto>>> SubmitQuizAsync(int studentQuizId);
+        Task<QuizApiResponse<StudentQuizResultDto>> SubmitQuizAsync(int studentQuizId);
 
         [Post("/api/student/quiz/{studentQuizId}/auto-submit")]
-        Task<QuizApiResponse> AutoSubmitQuizAsync(int studentQuizId);
+        Task<QuizApiResponse<StudentQuizResultDto>> AutoSubmitQuizAsync(int studentQuizId);
 
         [Post("/api/student/quiz/{studentQuizId}/exit")]
-        Task<QuizApiResponse> ExitQuizAsync(int studentQuizId);
+        Task<QuizApiResponse<StudentQuizResultDto>> ExitQuizAsync(int studentQuizId);
     }
 }

@@ -149,50 +149,67 @@ namespace Examy.Api.Services
             return QuizApiResponse.Success;
         }
 
-        public async Task<QuizApiResponse> SubmitQuizAsync(int studentQuizId, int studentId)
-      => await CompleteQuizAsync(studentQuizId, DateTime.Now, nameof(StudentQuizStats.Completed), studentId);
+        public async Task<QuizApiResponse<StudentQuizResultDto>> SubmitQuizAsync(int studentQuizId, int studentId)
+           => await CompleteQuizAsync(studentQuizId, DateTime.Now, nameof(StudentQuizStats.Completed), studentId);
+        
 
-        public async Task<QuizApiResponse> ExitQuizAsync(int studentQuizId, int studentId)
+        public async Task<QuizApiResponse<StudentQuizResultDto>> ExitQuizAsync(int studentQuizId, int studentId)
             => await CompleteQuizAsync(studentQuizId, null, nameof(StudentQuizStats.Expired), studentId);
 
-        public async Task<QuizApiResponse> AutoSubmitQuizAsync(int studentQuizId, int studentId)
+        public async Task<QuizApiResponse<StudentQuizResultDto>> AutoSubmitQuizAsync(int studentQuizId, int studentId)
             => await CompleteQuizAsync(studentQuizId, DateTime.Now, nameof(StudentQuizStats.AutoSubmitted), studentId);
 
-        private async Task<QuizApiResponse> CompleteQuizAsync(int studentQuizId, DateTime? completeOn, string status, int studentId)
+        private async Task<QuizApiResponse<StudentQuizResultDto>> CompleteQuizAsync(int studentQuizId, DateTime? completeOn, string status, int studentId)
         {
             var studentQuiz = await _context.StudentQuizzes
+                .Include(sq => sq.Quiz)
                 .AsTracking()
                 .FirstOrDefaultAsync(s => s.Id == studentQuizId);
+
             if (studentQuiz == null)
             {
-                return QuizApiResponse.Fail("Quiz does not exist");
+                return QuizApiResponse<StudentQuizResultDto>.Fail("Quiz does not exist");
             }
+
             if (studentQuiz.StudentId != studentId)
             {
-                return QuizApiResponse.Fail("Invalid request");
+                return QuizApiResponse<StudentQuizResultDto>.Fail("Invalid request");
             }
+
             if (studentQuiz.CompletedOn.HasValue || studentQuiz.Status == nameof(StudentQuizStats.Expired))
             {
-                return QuizApiResponse.Fail("Quiz already submitted");
+                return QuizApiResponse<StudentQuizResultDto>.Fail("Quiz already submitted");
             }
+
             try
             {
                 studentQuiz.Status = status;
                 studentQuiz.CompletedOn = completeOn;
-                var studentQuizQuestions = await _context.StudentQuestions
-                    .Where(s => s.StudentQuizId == studentQuizId)
-                    .ToListAsync();
 
-                _context.StudentQuestions.RemoveRange(studentQuizQuestions);
+                // Calculate the total score
+                var totalQuestions = await _context.Questions
+                    .CountAsync(q => q.QuizId == studentQuiz.QuizId);
+
+                var correctAnswers = studentQuiz.Score;
+                var incorrectAnswers = totalQuestions - correctAnswers;
+                var finalScore = totalQuestions > 0 ? ((double)correctAnswers / totalQuestions) * 100 : 0;
+
                 await _context.SaveChangesAsync();
 
-                return QuizApiResponse.Success;
+                var result = new StudentQuizResultDto(totalQuestions,
+                    correctAnswers,
+                    incorrectAnswers,
+                    finalScore);
+               
+
+                return QuizApiResponse<StudentQuizResultDto>.Success(result);
             }
             catch (Exception ex)
             {
-                return QuizApiResponse.Fail(ex.Message);
+                return QuizApiResponse<StudentQuizResultDto>.Fail(ex.Message);
             }
         }
+
 
 
         public async Task<PagedResult<StudentQuizDto>> GetStudentQuizAsync(int  studentId,int startIndex, int pageSize )

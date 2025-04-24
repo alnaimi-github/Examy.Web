@@ -32,10 +32,10 @@
 
             @foreach (var o in _question.Options)
             {
-                <div class="d-flex gap-2 p-3 mb-3 bg-white option-box" @onclick="() => _selecteOptionId = o.Id">
+                <div class="d-flex gap-2 p-3 mb-3 bg-white option-box" @onclick="() => _selectOptionId = o.Id">
                     <input type="radio" class="" name="rdo_@_question.Id" id="rdo_@o.Id"
-                           checked="@(_selecteOptionId == o.Id)"
-                           @onchange="() => _selecteOptionId = o.Id" />
+                           checked="@(_selectOptionId == o.Id)"
+                           @onchange="() => _selectOptionId = o.Id" />
                     <label for="rdo_@o.Id" class="d-block">@o.Text</label>
                 </div>
             }
@@ -91,11 +91,11 @@
 
 @code {
     private QuestionDto? _question = new();
-    private int _selecteOptionId;
+    private int _selectOptionId;
     private string? _errorMessage;
     private string? _submitQuizMessage;
     private bool _showExitQuizConfirmation;
-    private List<QuestionDto> _questions = [];
+    private readonly List<QuestionDto> _questions = [];
     private bool IsLastQuestion => _questions.Count == QuizState.Quiz.TotalQuestions;
 
     // Fields for evaluation
@@ -114,18 +114,86 @@
         await LoadNextQuestionAsync();
     }
 
+    private async Task SubmitQuizAsync()
+    {
+        var isResponseSaved = await SaveQuestionResponseAsync();
+        if (isResponseSaved)
+        {
+            AppState.ShowLoader("Submitting the quiz");
+            try
+            {
+                // Call the API to submit the quiz
+                QuizApiResponse<StudentQuizResultDto> result = await StudentQuizApi.SubmitQuizAsync(QuizState.StudentQuizId);
+                if (!result.IsSuccess || result.Data is null)
+                {
+                    _errorMessage = result.ErrorMessage;
+                    return;
+                }
+
+                var quizResult = result.Data;
+                _correctAnswers = quizResult.CorrectAnswers;
+                _incorrectAnswers = quizResult.IncorrectAnswers;
+                _finalScore = quizResult.FinalScore;
+                _isPassed = _finalScore >= 60;
+
+                _submitQuizMessage = "Quiz submitted successfully. See your results below.";
+            }
+            catch (Exception ex)
+            {
+                _errorMessage = ex.Message;
+            }
+            finally
+            {
+                AppState.HideLoader();
+            }
+        }
+    }
+
+    private async Task AutoSubmitQuizAsync()
+    {
+        try
+        {
+            AppState.ShowLoader("Auto-submitting the quiz");
+            QuizApiResponse<StudentQuizResultDto> result = await StudentQuizApi.AutoSubmitQuizAsync(QuizState.StudentQuizId);
+
+            if (!result.IsSuccess || result.Data is null)
+            {
+                _errorMessage = result.ErrorMessage;
+                return;
+            }
+
+            var quizResult = result.Data;
+            _correctAnswers = quizResult.CorrectAnswers;
+            _incorrectAnswers = quizResult.IncorrectAnswers;
+            _finalScore = quizResult.FinalScore;
+            _isPassed = _finalScore >= 60;
+
+            _submitQuizMessage = "Quiz auto-submitted successfully. See your results below.";
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = ex.Message;
+        }
+        finally
+        {
+            AppState.HideLoader();
+        }
+    }
+
     private async Task ExitQuizAsync()
     {
         try
         {
             AppState.ShowLoader("Exiting the quiz");
-            QuizApiResponse result = await StudentQuizApi.ExitQuizAsync(QuizState.StudentQuizId);
+            QuizApiResponse<StudentQuizResultDto> result = await StudentQuizApi.ExitQuizAsync(QuizState.StudentQuizId);
 
             if (!result.IsSuccess)
             {
                 _errorMessage = result.ErrorMessage;
                 return;
             }
+
+            // Redirect to the quizzes page
             RedirectToMyQuizes();
         }
         catch (Exception ex)
@@ -144,41 +212,6 @@
         if (isResponseSaved)
         {
             await LoadNextQuestionAsync();
-        }
-    }
-
-    private async Task SubmitQuizAsync()
-    {
-        var isResponseSaved = await SaveQuestionResponseAsync();
-        if (isResponseSaved)
-        {
-            AppState.ShowLoader("Submitting the quiz");
-            try
-            {
-                QuizApiResponse<List<QuestionDto>> result = await StudentQuizApi.SubmitQuizAsync(QuizState.StudentQuizId);
-                if (!result.IsSuccess || result.Data == null)
-                {
-                    _errorMessage = result.ErrorMessage;
-                    return;
-                }
-
-                // Calculate the score
-                _correctAnswers = result.Data.Count(q => q.Options.Any(o => o.IsCorrect && o.Id == _selecteOptionId));
-                _incorrectAnswers = result.Data.Count - _correctAnswers;
-                _finalScore = ((double)_correctAnswers / result.Data.Count) * 100;
-                _isPassed = _finalScore >= 60;
-
-                // Display the result
-                _submitQuizMessage = "Quiz submitted successfully. See your results below.";
-            }
-            catch (Exception ex)
-            {
-                _errorMessage = ex.Message;
-            }
-            finally
-            {
-                AppState.HideLoader();
-            }
         }
     }
 
@@ -209,7 +242,7 @@
     private async Task<bool> SaveQuestionResponseAsync()
     {
         _errorMessage = null;
-        if (_selecteOptionId == 0)
+        if (_selectOptionId == 0)
         {
             _errorMessage = "Please select an option";
             return false;
@@ -217,14 +250,15 @@
         AppState.ShowLoader("Saving your response");
         try
         {
-            StudentQuizQuestionResponseDto dto = new(QuizState.StudentQuizId, _question.Id, _selecteOptionId);
+            StudentQuizQuestionResponseDto dto = new(QuizState.StudentQuizId, _question.Id, _selectOptionId);
             QuizApiResponse result = await StudentQuizApi.SaveQuestionResponseAsync(QuizState.StudentQuizId, dto);
+
             if (!result.IsSuccess)
             {
                 _errorMessage = result.ErrorMessage;
                 return false;
             }
-            _selecteOptionId = 0;
+            _selectOptionId = 0;
             return true;
         }
         catch (Exception ex)
@@ -243,29 +277,5 @@
         QuizState.StopQuiz();
         NavigationManager.NavigateTo("student/quizes", replace: true);
     }
-
-    private async Task AutoSubmitQuizAsync()
-    {
-        try
-        {
-            AppState.ShowLoader("Submitting the quiz");
-            QuizApiResponse result = await StudentQuizApi.AutoSubmitQuizAsync(QuizState.StudentQuizId);
-
-            if (!result.IsSuccess)
-            {
-                _errorMessage = result.ErrorMessage;
-                return;
-            }
-
-            _submitQuizMessage = "Quiz submitted successfully";
-        }
-        catch (Exception ex)
-        {
-            _errorMessage = ex.Message;
-        }
-        finally
-        {
-            AppState.HideLoader();
-        }
-    }
 }
+
